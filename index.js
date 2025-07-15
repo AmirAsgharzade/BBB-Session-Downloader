@@ -12,7 +12,7 @@ function parseTimeToMs(timeStr) {
 async function startBBBRecording() {
   // Launch puppeteer browser (Chromium)
 
-
+  try{
   const browser = await puppeteer.launch({
     headless: false,
     defaultViewport: null,
@@ -31,6 +31,8 @@ async function startBBBRecording() {
     ],
   });
 
+
+  
   const page = await browser.newPage();
 
   // Replace with your actual BBB meeting URL
@@ -40,20 +42,19 @@ async function startBBBRecording() {
   await page.goto(bbbUrl);
 
   // Wait some seconds for the BBB session to fully load
-//   await page.waitForTimeout(10000);
     await new Promise(resolve => setTimeout(resolve, 10000)); // wait for 3 seconds
     
     const timestring = await page.$eval("span.vjs-remaining-time-display", el => el.textContent.trim())
     const timeout = parseTimeToMs(timestring);
 
-    page.evaluate(() => {
+    await page.evaluate(() => {
 
       const style = document.createElement("style");
       style.innerHTML = '* { cursor : none !important;}';
       document.head.appendChild(style)
 
     });
-    page.click("button.vjs-play-control");
+    await page.click("button.vjs-play-control");
 
 
   // Start ffmpeg recording process
@@ -64,16 +65,24 @@ async function startBBBRecording() {
   // Let the recording run for 1 hour or until you manually stop the script
 //   await page.waitForTimeout(60 * 60 * 1000);
   console.log(timeout,timestring)
-  await new Promise(resolve => setTimeout(resolve, 15000000)); // wait for 3 seconds
+  await new Promise(resolve => setTimeout(resolve, 15000)); // wait for 3 seconds
 
 
   console.log('Stopping recording...');
   // Stop the ffmpeg process gracefully
-  ffmpegProcess.kill('SIGINT');
+  ffmpegProcess.stdin.write('q');
+
+  await new Promise(resolve => setTimeout(resolve,15000))
+
+
 
   await browser.close();
 
   console.log('Browser closed, recording stopped.');
+  }
+  catch(err){
+    console.log(err);
+  }
 }
 
 function startRecording() {
@@ -95,9 +104,14 @@ function startRecording() {
       '-f', 'gdigrab',
       '-framerate', '30',
       '-i', 'title=Playback - Google Chrome for Testing',
+      // '-i','desktop',
       '-c:v', 'libx264',
-      '-preset', 'ultrafast',
+      '-profile:v', 'baseline',
+      '-level', '3.0',
+      '-pix_fmt', 'yuv420p',
+      '-preset', 'fast',
       '-c:a', 'aac',
+      '-b:a', '128k',
       '-movflags', '+faststart',
       outputFile,
     ];
@@ -123,7 +137,7 @@ function startRecording() {
 
   console.log('Running ffmpeg with args:', ffmpegArgs.join(' '));
 
-  const ffmpeg = spawn('ffmpeg', ffmpegArgs, { stdio: ['ignore', 'inherit', 'inherit'] });
+  const ffmpeg = spawn('ffmpeg', ffmpegArgs, { stdio: ['pipe', 'pipe', 'pipe'] });
 
   ffmpeg.on('exit', (code, signal) => {
     console.log(`ffmpeg exited with code ${code} and signal ${signal}`);
