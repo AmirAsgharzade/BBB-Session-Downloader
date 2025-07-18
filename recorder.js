@@ -9,7 +9,7 @@ function parseTimeToMs(timeStr) {
   return (minutes * 60 + seconds) * 1000;
 }
 
-async function startBBBRecording() {
+async function startBBBRecording(link) {
   // Launch puppeteer browser (Chromium)
 
   try{
@@ -36,8 +36,8 @@ async function startBBBRecording() {
   const page = await browser.newPage();
 
   // Replace with your actual BBB meeting URL
-  const bbbUrl = 'https://sky.webinaronline.ir/playback/presentation/2.3/023c21c182db3cdb4b3d5eb7781b6ff62fd533b2-1745817640964';
-
+  // const bbbUrl = 'https://sky.webinaronline.ir/playback/presentation/2.3/023c21c182db3cdb4b3d5eb7781b6ff62fd533b2-1745817640964';
+  const bbbUrl = link;
   console.log('Opening BBB session...');
   await page.goto(bbbUrl);
 
@@ -103,8 +103,8 @@ function startRecording() {
       '-i', 'audio=CABLE Output (VB-Audio Virtual Cable)',  // <-- Change if needed
       '-f', 'gdigrab',
       '-framerate', '30',
-      '-i', 'title=Playback - Google Chrome for Testing',
-      // '-i','desktop',
+      // '-i', 'title=Playback - Google Chrome for Testing',
+      '-i','desktop',
       '-c:v', 'libx264',
       '-profile:v', 'baseline',
       '-level', '3.0',
@@ -126,9 +126,14 @@ function startRecording() {
       '-f', 'pulse',
       '-i', 'default',
       '-c:v', 'libx264',
-      '-preset', 'ultrafast',
+      '-profile:v', 'baseline',
+      '-level', '3.0',
+      '-pix_fmt', 'yuv420p',
+      '-preset', 'fast',
       '-r', '30',
       '-c:a', 'aac',
+      '-b:a', '128k',
+      '-movflags', '+faststart',
       outputFile,
     ];
   } else {
@@ -146,4 +151,4 @@ function startRecording() {
   return ffmpeg;
 }
 
-startBBBRecording().catch(console.error);
+module.exports = {startBBBRecording};
