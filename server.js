@@ -27,14 +27,14 @@ const pool = new Pool({
 });
 
 // index page
-app.get('/session-downloader',async (req,res) =>{
+app.get('/Record-meeting',async (req,res) =>{
 
     res.sendFile(path.join(__dirname,'templates','index.html'))
 
 });
 
 // Handling the enque of the links
-app.post('/session-downloader',async (req,res) =>{
+app.post('/Record-Meeting',async (req,res) =>{
 
     const {url} = req.body;
 
@@ -43,15 +43,76 @@ app.post('/session-downloader',async (req,res) =>{
 
             queue.enqueue(id.rows[0].id);
 
-            res.status(201).send(`Success! your link is now in our queue.`)
+            res.status(201).send({result:true,ID:id.rows[0].id})
 
     }catch(error){
         console.error(error)
 
-        res.status(500).send('an error occurred while submitting the url');
+        res.status(500).send({result:false,ID:null});
     }
 
 } )
+
+
+app.post("/Record-status", async (req,res) =>{
+
+    const id = req.body.id
+    
+
+    const result = await pool.query('SELECT status FROM session_urls WHERE id=$1',[id])
+    
+
+    if (result.rows.length === 0){
+        res.status(404).send({result:false,status:null})
+    }else{
+        res.status(200).send({result:true,status:result.rows[0].status})
+    }
+
+})
+
+
+app.post('/get-recorded-file',async (req,res) =>{
+
+    const id = req.body.id
+    const result = await pool.query('SELECT link FROM session_urls WHERE id=$1',[id])
+    dummy_url = 'Dummy url for downloading id'
+
+    if (result.rows.length === 0){
+        res.status(404).send({result:false,url:null})
+    }else{
+        res.status(200).send({result:true,url:dummy_url})
+    }
+
+})
+
+app.delete('/delete-recorded-file',async (req,res) =>{
+    const id = req.body.id;
+    const result = await pool.query('DELETE FROM session_urls WHERE id=$1 RETURNING *',[id])
+
+    if (result.rows.length === 0){
+        res.status(404).send({result:false,deleted:null})
+    }else{
+        res.status(200).send({result:true,deleted:result.rows})
+    }
+})
+
+app.post('/get-proccess-status',async (req,res) =>{
+    const status = req.body.status
+
+    if (status === 0 ){
+        results = await pool.query('SELECT * FROM session_urls')
+    }else{
+        results = await pool.query('SELECT * FROM session_urls WHERE status=$1',[status])
+    }
+
+    if (results.rows.length === 0){
+        res.status(404).send({result:false,results:'no results found with this stauts'})
+    }else{
+        res.status(200).send({result:true,results:results.rows})
+    }
+
+
+})
 
 // running the app
 app.listen(port, ()=>{
